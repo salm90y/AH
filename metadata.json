@@ -1,0 +1,7 @@
+{
+  "name": "منصة AH - WatchParty",
+  "description": "منصة AH المتكاملة للمشاهدة الجماعية، البث المباشر، المحادثات الصوتية والكاميرا مع لوحة تحكم وإدارة الحسابات",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
