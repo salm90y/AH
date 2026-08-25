@@ -66,3 +66,15 @@ data class VisitedRoomHistory(
     val isCreator: Boolean,
     val lastVisited: Long = System.currentTimeMillis()
 )
+
+data class YouTubeSearchResult(
+    val id: String,
+    val videoId: String,
+    val title: String,
+    val channelTitle: String,
+    val thumbnailUrl: String,
+    val duration: String,
+    val views: String,
+    val publishedAt: String,
+    val videoUrl: String
+)

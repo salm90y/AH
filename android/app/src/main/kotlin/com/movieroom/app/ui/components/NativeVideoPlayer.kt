@@ -46,10 +46,11 @@ fun SyncedVideoPlayer(
 
     Box(
         modifier = modifier
-            .background(Color.Black)
-            .fillMaxSize(),
+            .fillMaxSize()
+            .background(Color(0xFF030712)),
         contentAlignment = Alignment.Center
     ) {
+        // Video Stream Layer
         if (youTubeId != null) {
             YouTubeSyncedPlayer(
                 youTubeVideoId = youTubeId,
@@ -64,6 +65,53 @@ fun SyncedVideoPlayer(
                 currentPositionMs = currentPositionMs,
                 onPlaybackChange = onPlaybackChange
             )
+        }
+
+        // Overlay: Top-Left Sync Live Badge
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = 0.65f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFFEF4444), androidx.compose.foundation.shape.CircleShape)
+                    )
+                    Text(
+                        text = if (isPlaying) "بث متزامن 🔴" else "متوقف مؤقتاً ⏸️",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = 0.65f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, AHPrimaryPurple.copy(alpha = 0.5f))
+            ) {
+                Text(
+                    text = "AH Cinema 4K",
+                    color = AHAccentEmerald,
+                    fontSize = 10.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
