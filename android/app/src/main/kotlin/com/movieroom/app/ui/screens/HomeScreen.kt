@@ -497,7 +497,7 @@ fun HomeScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            if (movie.isYouTube) Icons.Default.PlayCircleFilled else Icons.Default.Movie,
+                                            if (movie.isYouTube) Icons.Default.PlayCircle else Icons.Default.Movie,
                                             contentDescription = null,
                                             tint = if (movie.isYouTube) Color(0xFFFF4444) else AHAccentCyan,
                                             modifier = Modifier.size(28.dp)

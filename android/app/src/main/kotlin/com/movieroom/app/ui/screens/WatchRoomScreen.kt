@@ -1190,7 +1190,7 @@ fun WatchRoomScreen(
                                             }
                                         }
 
-                                        Icon(Icons.Default.PlayCircleFilled, contentDescription = null, tint = AHPrimaryPurple, modifier = Modifier.size(24.dp))
+                                        Icon(Icons.Default.PlayCircle, contentDescription = null, tint = AHPrimaryPurple, modifier = Modifier.size(24.dp))
                                     }
                                 }
                             }
@@ -1322,7 +1322,7 @@ fun WatchRoomScreen(
                                         Text(title, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         Text(typeStr, color = AHAccentCyan, fontSize = 9.sp)
                                     }
-                                    Icon(Icons.Default.PlayCircleFilled, contentDescription = null, tint = AHAccentEmerald, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.PlayCircle, contentDescription = null, tint = AHAccentEmerald, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
