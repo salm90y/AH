@@ -20,32 +20,28 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - name: Install Web Dependencies & Build Frontend
+      - name: Install Dependencies & Build Web Assets
         run: |
-          npm install
+          npm install --no-audit --prefer-offline || npm install
           npm run build
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant Execute Permission for Gradlew
-        run: |
-          cd android
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper
-          fi
-          chmod +x gradlew
-
       - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --stacktrace
+          gradle wrapper
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
