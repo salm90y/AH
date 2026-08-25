@@ -5,8 +5,6 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,7 +19,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
     private final static int FILE_CHOOSER_RESULT_CODE = 1001;
     private final static int PERMISSIONS_REQUEST_CODE = 1002;
 
-    // Production or local server URL
     private static final String APP_URL = "https://ais-dev-hru62rf24hnz7tsmkjbylw-829350257512.europe-west2.run.app";
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -48,12 +44,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Keep screen on during playback & enable hardware acceleration
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().setFlags(
-            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
-        );
 
         FrameLayout rootLayout = new FrameLayout(this);
         rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
@@ -78,10 +69,8 @@ public class MainActivity extends AppCompatActivity {
         rootLayout.addView(customViewContainer);
         setContentView(rootLayout);
 
-        // Request runtime permissions for Mic and Camera (WebRTC)
         checkAndRequestPermissions();
 
-        // Configure WebView Settings
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -93,7 +82,9 @@ public class MainActivity extends AppCompatActivity {
         settings.setUseWideViewPort(true);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setUserAgentString(settings.getUserAgentString() + " MovieRoomApp/1.0.0 AndroidNative");
 
@@ -102,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (url.startsWith("http://") || url.startsWith("https://")) {
-                    return false; // Load inside WebView
+                    return false;
                 }
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -115,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
-            // Grant WebRTC Microphone and Camera Permissions Automatically
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
                 runOnUiThread(() -> {
@@ -125,7 +115,6 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
 
-            // File Chooser for Image/Avatar Uploads
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 if (MainActivity.this.filePathCallback != null) {
@@ -143,7 +132,6 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
 
-            // Fullscreen video playback handler
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
                 if (customView != null) {
@@ -172,7 +160,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Load the app URL or local assets
         webView.loadUrl(APP_URL);
     }
 
@@ -245,12 +232,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (customView != null) {
-            if (webView.getWebChromeClient() != null) {
-                // Exit fullscreen
-                customViewContainer.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-                customView = null;
-            }
+            customViewContainer.setVisibility(View.GONE);
+            webView.setVisibility(View.VISIBLE);
+            customView = null;
         } else if (webView.canGoBack()) {
             webView.goBack();
         } else {
