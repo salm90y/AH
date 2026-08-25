@@ -219,11 +219,12 @@ class MovieRepository {
         _historyState.value = current.take(20)
     }
 
-    fun updateRoomVideo(roomId: String, newUrl: String): Boolean {
+    fun updateRoomVideo(roomId: String, newUrl: String, title: String? = null): Boolean {
         val room = getRoomById(roomId) ?: return false
         val cleanUrl = newUrl.trim()
         val isYt = extractYouTubeId(cleanUrl) != null
         val updatedMovie = (room.currentMovie ?: initialMovies[0]).copy(
+            title = title ?: if (isYt) "فيديو يوتيوب" else "بث مباشر",
             videoUrl = cleanUrl,
             isYouTube = isYt
         )

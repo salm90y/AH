@@ -583,7 +583,7 @@ fun WatchRoomScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    if (isCameraOn) Icons.Default.Videocam else Icons.Default.CameraAlt,
+                    if (isCameraOn) Icons.Default.Videocam else Icons.Default.VideocamOff,
                     contentDescription = "الكاميرا",
                     tint = Color(0xFFF59E0B),
                     modifier = Modifier.size(16.dp)
