@@ -4,16 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,334 +16,578 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.movieroom.app.data.model.Movie
+import com.movieroom.app.data.model.VisitedRoomHistory
 import com.movieroom.app.data.model.WatchRoom
 import com.movieroom.app.data.repository.MovieRepository
+import com.movieroom.app.ui.components.AHHeader
+import com.movieroom.app.ui.components.AHRoomCard
 import com.movieroom.app.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     repository: MovieRepository,
-    onSelectMovie: (Movie) -> Unit,
+    username: String,
+    role: String,
     onJoinRoom: (WatchRoom) -> Unit,
-    onCreateRoom: () -> Unit
+    onLogout: () -> Unit
 ) {
-    val movies = remember { repository.getMovies() }
     val rooms by repository.roomsFlow.collectAsState(initial = emptyList())
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("الكل") }
+    val history by repository.historyFlow.collectAsState(initial = emptyList())
+    val movies by repository.moviesFlow.collectAsState(initial = emptyList())
 
-    val categories = listOf("الكل", "خيال علمي", "غموض وإثارة", "وثائقي", "أكشن")
+    var activeTab by remember { mutableStateOf(0) } // 0: Public Rooms, 1: Create Room, 2: Direct Join, 3: History, 4: Featured
 
-    val filteredMovies = movies.filter {
-        (selectedCategory == "الكل" || it.category == selectedCategory) &&
-        (searchQuery.isBlank() || it.title.contains(searchQuery, ignoreCase = true))
-    }
+    // Create Room State
+    var createName by remember { mutableStateOf("") }
+    var createUrl by remember { mutableStateOf("https://www.youtube.com/watch?v=LXb3EKWsInQ") }
+    var createIsPrivate by remember { mutableStateOf(false) }
+    var createPasscode by remember { mutableStateOf("") }
 
-    Scaffold(
-        containerColor = DarkBackground,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onCreateRoom,
-                containerColor = PrimaryIndigo,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "إنشاء غرفة")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("إنشاء غرفة سهرة", fontWeight = FontWeight.Bold)
-                }
-            }
+    // Direct Join State
+    var directRoomId by remember { mutableStateOf("") }
+    var directPasscode by remember { mutableStateOf("") }
+    var directError by remember { mutableStateOf<String?>(null) }
+
+    // Password Prompt Dialog State
+    var selectedPrivateRoom by remember { mutableStateOf<WatchRoom?>(null) }
+    var inputPasscode by remember { mutableStateOf("") }
+    var passcodeError by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AHBackground)
+    ) {
+        // Top AH Header
+        AHHeader(
+            username = username,
+            role = role,
+            onLogout = onLogout
+        )
+
+        // Navigation Tabs Row
+        ScrollableTabRow(
+            selectedTabIndex = activeTab,
+            containerColor = AHSurface,
+            contentColor = Color.White,
+            edgePadding = 12.dp,
+            divider = { HorizontalDivider(color = AHCardBorder.copy(alpha = 0.4f)) }
+        ) {
+            Tab(
+                selected = activeTab == 0,
+                onClick = { activeTab = 0 },
+                text = { Text("الغرف العامة (${rooms.filter { !it.isPrivate }.size})", fontSize = 13.sp, fontWeight = if (activeTab == 0) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = activeTab == 1,
+                onClick = { activeTab = 1 },
+                text = { Text("إنشاء غرفة", fontSize = 13.sp, fontWeight = if (activeTab == 1) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = activeTab == 2,
+                onClick = { activeTab = 2 },
+                text = { Text("انضمام برمز", fontSize = 13.sp, fontWeight = if (activeTab == 2) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = activeTab == 3,
+                onClick = { activeTab = 3 },
+                text = { Text("سجل الغرف (${history.size})", fontSize = 13.sp, fontWeight = if (activeTab == 3) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
+            Tab(
+                selected = activeTab == 4,
+                onClick = { activeTab = 4 },
+                text = { Text("محتوى مميز", fontSize = 13.sp, fontWeight = if (activeTab == 4) FontWeight.Bold else FontWeight.Normal) },
+                icon = { Icon(Icons.Default.LiveTv, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            )
         }
-    ) { padding ->
-        LazyColumn(
+
+        // Tab Content
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "سهرة ممتعة 🎬",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "شاهد مع أصدقائك في بث مباشر متزامن",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextSecondary
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(PrimaryIndigo, SecondaryPurple)
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("AH", fontWeight = FontWeight.Black, color = Color.White)
-                    }
-                }
-            }
-
-            item {
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("ابحث عن فيلم أو سهرة...", color = TextSecondary) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        containerColor = DarkSurface,
-                        focusedBorderColor = PrimaryIndigo,
-                        unfocusedBorderColor = DarkSurfaceVariant
-                    ),
-                    singleLine = true
-                )
-            }
-
-            // Categories
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories) { cat ->
-                        val isSelected = cat == selectedCategory
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (isSelected) PrimaryIndigo else DarkSurface)
-                                .clickable { selectedCategory = cat }
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+            when (activeTab) {
+                // Tab 0: Public Rooms
+                0 -> {
+                    val publicList = rooms.filter { !it.isPrivate }
+                    if (publicList.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.MeetingRoom, contentDescription = null, tint = AHTextMuted, modifier = Modifier.size(54.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("لا توجد غرف عامة نشطة حالياً", color = AHTextSecondary, fontSize = 15.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { activeTab = 1 },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryPurple)
+                                ) {
+                                    Text("كن أول من ينشئ غرفة")
+                                }
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Text(
-                                text = cat,
-                                color = if (isSelected) Color.White else TextSecondary,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 13.sp
+                            items(publicList) { room ->
+                                AHRoomCard(
+                                    room = room,
+                                    onJoinClick = {
+                                        if (room.isPrivate) {
+                                            selectedPrivateRoom = room
+                                        } else {
+                                            repository.recordVisitedRoom(room.id, room.name, isCreator = false)
+                                            onJoinRoom(room)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Tab 1: Create Room
+                1 -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            Card(
+                                shape = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.cardColors(containerColor = AHSurface.copy(alpha = 0.9f)),
+                                border = CardDefaults.outlinedCardBorder(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text(
+                                        text = "إنشاء غرفة مشاهدة جديدة",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "قم بإدخال اسم الغرفة ورابط فيديو يوتيوب لمزامنته مع الجميع",
+                                        fontSize = 12.sp,
+                                        color = AHTextMuted
+                                    )
+
+                                    Spacer(modifier = Modifier.height(20.dp))
+
+                                    // Room Name
+                                    OutlinedTextField(
+                                        value = createName,
+                                        onValueChange = { createName = it },
+                                        label = { Text("اسم الغرفة (مثال: سهرة الخميس 🍿)") },
+                                        leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, tint = AHPrimaryPurple) },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AHPrimaryPurple,
+                                            unfocusedBorderColor = AHCardBorder,
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        )
+                                    )
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    // Video / YouTube URL
+                                    OutlinedTextField(
+                                        value = createUrl,
+                                        onValueChange = { createUrl = it },
+                                        label = { Text("رابط فيديو يوتيوب أو MP4 مباشر") },
+                                        leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, tint = AHAccentCyan) },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = AHPrimaryPurple,
+                                            unfocusedBorderColor = AHCardBorder,
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        )
+                                    )
+
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    // Private Switch
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(AHSurfaceVariant.copy(alpha = 0.5f))
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                if (createIsPrivate) Icons.Default.Lock else Icons.Default.LockOpen,
+                                                contentDescription = null,
+                                                tint = if (createIsPrivate) AHAccentAmber else AHAccentCyan,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Column {
+                                                Text(
+                                                    text = if (createIsPrivate) "غرفة خاصة محمية برمز" else "غرفة عامة للجميع",
+                                                    color = Color.White,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Text(
+                                                    text = if (createIsPrivate) "فقط من يملك الرمز يستطيع الدخول" else "تظهر في قائمة الغرف العامة",
+                                                    color = AHTextMuted,
+                                                    fontSize = 11.sp
+                                                )
+                                            }
+                                        }
+                                        Switch(
+                                            checked = createIsPrivate,
+                                            onCheckedChange = { createIsPrivate = it },
+                                            colors = SwitchDefaults.colors(checkedThumbColor = AHPrimaryPurple)
+                                        )
+                                    }
+
+                                    if (createIsPrivate) {
+                                        Spacer(modifier = Modifier.height(14.dp))
+                                        OutlinedTextField(
+                                            value = createPasscode,
+                                            onValueChange = { createPasscode = it },
+                                            label = { Text("رمز الدخول السري (PIN)") },
+                                            leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null, tint = AHAccentAmber) },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(14.dp),
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = AHAccentAmber,
+                                                unfocusedBorderColor = AHCardBorder,
+                                                focusedTextColor = Color.White,
+                                                unfocusedTextColor = Color.White
+                                            )
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(24.dp))
+
+                                    Button(
+                                        onClick = {
+                                            val room = repository.createRoom(
+                                                name = createName.ifBlank { "غرفة ${username}" },
+                                                videoUrl = createUrl,
+                                                isPrivate = createIsPrivate,
+                                                passcode = createPasscode,
+                                                creatorName = username,
+                                                creatorId = "user-${System.currentTimeMillis() % 1000}"
+                                            )
+                                            onJoinRoom(room)
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(52.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryPurple)
+                                    ) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("إنشاء الغرفة وبدء المشاهدة", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Tab 2: Direct Join by ID
+                2 -> {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = AHSurface.copy(alpha = 0.9f)),
+                        border = CardDefaults.outlinedCardBorder(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text("الانضمام المباشر لغرفة", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                            Text("إذا أرسل لك صديقك معرف الغرفة أو الرمز أدخله هنا", fontSize = 12.sp, color = AHTextMuted)
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            OutlinedTextField(
+                                value = directRoomId,
+                                onValueChange = {
+                                    directRoomId = it
+                                    directError = null
+                                },
+                                label = { Text("معرف الغرفة (Room ID)") },
+                                leadingIcon = { Icon(Icons.Default.Tag, contentDescription = null, tint = AHPrimaryPurple) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AHPrimaryPurple,
+                                    unfocusedBorderColor = AHCardBorder,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
                             )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            OutlinedTextField(
+                                value = directPasscode,
+                                onValueChange = {
+                                    directPasscode = it
+                                    directError = null
+                                },
+                                label = { Text("رمز المرور (إذا كانت الغرفة خاصة)") },
+                                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = AHAccentAmber) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AHPrimaryPurple,
+                                    unfocusedBorderColor = AHCardBorder,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
+                            )
+
+                            directError?.let { err ->
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(err, color = AHAccentRose, fontSize = 12.sp)
+                            }
+
+                            Spacer(modifier = Modifier.height(22.dp))
+
+                            Button(
+                                onClick = {
+                                    val trimmedId = directRoomId.trim()
+                                    if (trimmedId.isBlank()) {
+                                        directError = "يرجى إدخال معرف الغرفة"
+                                        return@Button
+                                    }
+                                    val found = repository.getRoomById(trimmedId)
+                                    if (found != null) {
+                                        if (found.isPrivate && found.passcode != null && found.passcode != directPasscode.trim()) {
+                                            directError = "رمز المرور غير صحيح لهذه الغرفة الخاصة"
+                                        } else {
+                                            repository.recordVisitedRoom(found.id, found.name, isCreator = false)
+                                            onJoinRoom(found)
+                                        }
+                                    } else {
+                                        // Auto-create/join room dynamically
+                                        val dynamicRoom = repository.createRoom(
+                                            name = "غرفة $trimmedId",
+                                            videoUrl = "https://www.youtube.com/watch?v=LXb3EKWsInQ",
+                                            isPrivate = directPasscode.isNotBlank(),
+                                            passcode = directPasscode.ifBlank { null },
+                                            creatorName = username
+                                        )
+                                        onJoinRoom(dynamicRoom)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryPurple)
+                            ) {
+                                Text("الانضمام للغرفة الآن", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Tab 3: Visited History
+                3 -> {
+                    if (history.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("لا توجد غرف سابقة في سجلك", color = AHTextSecondary)
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(history) { item ->
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = AHSurface.copy(alpha = 0.85f),
+                                    border = CardDefaults.outlinedCardBorder(),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(14.dp)
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(item.name, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                                            Text("معرف: ${item.id}", fontSize = 11.sp, color = AHTextMuted)
+                                        }
+                                        Button(
+                                            onClick = {
+                                                val existing = repository.getRoomById(item.id)
+                                                if (existing != null) {
+                                                    onJoinRoom(existing)
+                                                } else {
+                                                    val fresh = repository.createRoom(
+                                                        name = item.name,
+                                                        videoUrl = "https://www.youtube.com/watch?v=LXb3EKWsInQ",
+                                                        isPrivate = false,
+                                                        passcode = null,
+                                                        creatorName = username
+                                                    )
+                                                    onJoinRoom(fresh)
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryIndigo)
+                                        ) {
+                                            Text("دخول مجددًا", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Tab 4: Featured Content
+                4 -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(movies) { movie ->
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = AHSurface.copy(alpha = 0.9f),
+                                border = CardDefaults.outlinedCardBorder(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(if (movie.isYouTube) Color(0xFFFF0000).copy(alpha = 0.2f) else AHAccentCyan.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            if (movie.isYouTube) Icons.Default.PlayCircleFilled else Icons.Default.Movie,
+                                            contentDescription = null,
+                                            tint = if (movie.isYouTube) Color(0xFFFF4444) else AHAccentCyan,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(movie.title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                                        Text(movie.category, fontSize = 11.sp, color = AHTextMuted)
+                                        Text(movie.duration, fontSize = 11.sp, color = AHAccentEmerald)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            val room = repository.createRoom(
+                                                name = "سهرة ${movie.title}",
+                                                videoUrl = movie.videoUrl,
+                                                isPrivate = false,
+                                                passcode = null,
+                                                creatorName = username
+                                            )
+                                            onJoinRoom(room)
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryPurple)
+                                    ) {
+                                        Text("بدء سهرة", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
 
-            // Live Watch Rooms Section
-            if (rooms.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "غرف المشاهدة المباشرة 🔴",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+    // Private Room PIN Prompt Dialog
+    selectedPrivateRoom?.let { room ->
+        AlertDialog(
+            onDismissRequest = {
+                selectedPrivateRoom = null
+                inputPasscode = ""
+                passcodeError = null
+            },
+            title = {
+                Text("غرفة خاصة محمية برمز", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text("يرجى إدخال رمز المرور السري للانضمام إلى \"${room.name}\":", fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = inputPasscode,
+                        onValueChange = {
+                            inputPasscode = it
+                            passcodeError = null
+                        },
+                        label = { Text("رمز المرور PIN") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
+                    passcodeError?.let { err ->
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(err, color = AHAccentRose, fontSize = 12.sp)
+                    }
                 }
-
-                item {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(rooms) { room ->
-                            RoomCard(room = room, onClick = { onJoinRoom(room) })
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (room.passcode == null || room.passcode == inputPasscode.trim()) {
+                            repository.recordVisitedRoom(room.id, room.name, isCreator = false)
+                            val target = selectedPrivateRoom!!
+                            selectedPrivateRoom = null
+                            onJoinRoom(target)
+                        } else {
+                            passcodeError = "رمز المرور غير صحيح، يرجى المحاولة ثانية"
                         }
-                    }
-                }
-            }
-
-            // Movies Catalog Section
-            item {
-                Text(
-                    text = "الأفلام والعروض المتاحة",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            items(filteredMovies) { movie ->
-                MovieCard(movie = movie, onClick = { onSelectMovie(movie) })
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun RoomCard(room: WatchRoom, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .width(260.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface)
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp)
-            ) {
-                AsyncImage(
-                    model = room.currentMovie?.posterUrl,
-                    contentDescription = room.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, DarkSurface)
-                            )
-                        )
-                )
-
-                // Live Badge
-                Box(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFEF4444))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                        .align(Alignment.TopEnd)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryPurple)
                 ) {
-                    Text("مباشر (${room.viewerCount})", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("انضمام")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedPrivateRoom = null }) {
+                    Text("إلغاء")
                 }
             }
-
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = room.name,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "المنشئ: ${room.creatorName}",
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun MovieCard(movie: Movie, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = movie.posterUrl,
-                contentDescription = movie.title,
-                modifier = Modifier
-                    .size(90.dp, 120.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = movie.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color.White,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = AccentGold, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = movie.rating.toString(), color = AccentGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = movie.description,
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "${movie.category} • ${movie.duration}",
-                        color = PrimaryIndigo,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Button(
-                        onClick = onClick,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("مشاهدة", fontSize = 12.sp)
-                    }
-                }
-            }
-        }
+        )
     }
 }

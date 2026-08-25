@@ -8,52 +8,66 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val DarkBackground = Color(0xFF070B14)
-val DarkSurface = Color(0xFF0F172A)
-val DarkSurfaceVariant = Color(0xFF1E293B)
-val PrimaryIndigo = Color(0xFF6366F1)
-val SecondaryPurple = Color(0xFF8B5CF6)
-val AccentCyan = Color(0xFF06B6D4)
-val TextPrimary = Color(0xFFF8FAFC)
-val TextSecondary = Color(0xFF94A3B8)
-val AccentGold = Color(0xFFF59E0B)
+// Official AH Luxury Obsidian Palette
+val AHBackground = Color(0xFF070A13)
+val AHDarkBackground = Color(0xFF090D16)
+val AHSurface = Color(0xFF0F172A)
+val AHSurfaceVariant = Color(0xFF1E293B)
+val AHCardBorder = Color(0xFF334155)
 
-val MovieRoomDarkColorScheme = darkColorScheme(
-    primary = PrimaryIndigo,
-    secondary = SecondaryPurple,
-    tertiary = AccentCyan,
-    background = DarkBackground,
-    surface = DarkSurface,
-    surfaceVariant = DarkSurfaceVariant,
+val AHPrimaryPurple = Color(0xFF8B5CF6)
+val AHPrimaryIndigo = Color(0xFF6366F1)
+val AHAccentCyan = Color(0xFF38BDF8)
+val AHAccentEmerald = Color(0xFF10B981)
+val AHAccentAmber = Color(0xFFF59E0B)
+val AHAccentRose = Color(0xFFF43F5E)
+
+val AHTextPrimary = Color(0xFFF8FAFC)
+val AHTextSecondary = Color(0xFF94A3B8)
+val AHTextMuted = Color(0xFF64748B)
+
+val AHDarkColorScheme = darkColorScheme(
+    primary = AHPrimaryPurple,
+    secondary = AHPrimaryIndigo,
+    tertiary = AHAccentCyan,
+    background = AHBackground,
+    surface = AHSurface,
+    surfaceVariant = AHSurfaceVariant,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary
+    onBackground = AHTextPrimary,
+    onSurface = AHTextPrimary
 )
 
-val MovieRoomTypography = Typography(
+val AHTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Black,
         fontSize = 28.sp,
-        color = TextPrimary
+        color = AHTextPrimary
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
-        color = TextPrimary
+        color = AHTextPrimary
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
-        color = TextPrimary
+        color = AHTextPrimary
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
-        color = TextSecondary
+        color = AHTextSecondary
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        color = AHTextMuted
     )
 )
