@@ -40,7 +40,8 @@ fun SyncedVideoPlayer(
     modifier: Modifier = Modifier,
     isPlaying: Boolean = true,
     currentPositionMs: Long = 0L,
-    onPlaybackChange: ((isPlaying: Boolean, positionMs: Long) -> Unit)? = null
+    onPlaybackChange: ((isPlaying: Boolean, positionMs: Long) -> Unit)? = null,
+    onDurationChange: ((durationMs: Long) -> Unit)? = null
 ) {
     val youTubeId = remember(videoUrl) { extractYouTubeId(videoUrl) }
 
@@ -56,14 +57,16 @@ fun SyncedVideoPlayer(
                 youTubeVideoId = youTubeId,
                 isPlaying = isPlaying,
                 currentPositionMs = currentPositionMs,
-                onPlaybackChange = onPlaybackChange
+                onPlaybackChange = onPlaybackChange,
+                onDurationChange = onDurationChange
             )
         } else {
             ExoSyncedPlayer(
                 videoUrl = videoUrl,
                 isPlaying = isPlaying,
                 currentPositionMs = currentPositionMs,
-                onPlaybackChange = onPlaybackChange
+                onPlaybackChange = onPlaybackChange,
+                onDurationChange = onDurationChange
             )
         }
 
@@ -143,10 +146,16 @@ fun YouTubeSyncedPlayer(
     youTubeVideoId: String,
     isPlaying: Boolean,
     currentPositionMs: Long,
-    onPlaybackChange: ((isPlaying: Boolean, positionMs: Long) -> Unit)?
+    onPlaybackChange: ((isPlaying: Boolean, positionMs: Long) -> Unit)?,
+    onDurationChange: ((durationMs: Long) -> Unit)? = null
 ) {
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var isReady by remember { mutableStateOf(false) }
+    var hasError by remember { mutableStateOf(false) }
+
+    val embedUrl = remember(youTubeVideoId) {
+        "https://www.youtube-nocookie.com/embed/$youTubeVideoId?autoplay=1&enablejsapi=1&playsinline=1&controls=1&modestbranding=1&rel=0&origin=https://www.youtube.com&widget_referrer=https://www.youtube.com"
+    }
 
     val htmlContent = remember(youTubeVideoId) {
         """
@@ -157,16 +166,24 @@ fun YouTubeSyncedPlayer(
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; background: #000000; overflow: hidden; }
                 html, body, #player { width: 100%; height: 100%; }
+                iframe { width: 100%; height: 100%; border: none; }
             </style>
         </head>
         <body>
             <div id="player"></div>
-            <script src="https://www.youtube.com/iframe_api"></script>
             <script>
+                var tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                var firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
                 var player;
                 function onYouTubeIframeAPIReady() {
                     player = new YT.Player('player', {
+                        height: '100%',
+                        width: '100%',
                         videoId: '$youTubeVideoId',
+                        host: 'https://www.youtube-nocookie.com',
                         playerVars: {
                             'autoplay': 1,
                             'controls': 1,
@@ -178,23 +195,37 @@ fun YouTubeSyncedPlayer(
                         },
                         events: {
                             'onReady': onPlayerReady,
-                            'onStateChange': onPlayerStateChange
+                            'onStateChange': onPlayerStateChange,
+                            'onError': onPlayerError
                         }
                     });
                 }
                 function onPlayerReady(event) {
                     if (window.AndroidBridge) {
                         window.AndroidBridge.onPlayerReady();
+                        if (player && player.getDuration) {
+                            var dur = player.getDuration();
+                            if (dur > 0) window.AndroidBridge.onDuration(Math.floor(dur * 1000));
+                        }
                     }
                     if (${if (isPlaying) "true" else "false"}) {
-                        event.target.playVideo();
+                        try { event.target.playVideo(); } catch(e){}
                     }
                 }
                 function onPlayerStateChange(event) {
                     if (window.AndroidBridge && player && player.getCurrentTime) {
-                        var isPlaying = (event.data === YT.PlayerState.PLAYING);
+                        var isPlaying = (event.data === 1);
                         var timeMs = Math.floor(player.getCurrentTime() * 1000);
                         window.AndroidBridge.onStateChange(isPlaying, timeMs);
+                        if (player.getDuration) {
+                            var dur = player.getDuration();
+                            if (dur > 0) window.AndroidBridge.onDuration(Math.floor(dur * 1000));
+                        }
+                    }
+                }
+                function onPlayerError(event) {
+                    if (window.AndroidBridge) {
+                        window.AndroidBridge.onPlayerError(event.data);
                     }
                 }
                 function playVideo() { if (player && player.playVideo) player.playVideo(); }
@@ -206,7 +237,6 @@ fun YouTubeSyncedPlayer(
         """.trimIndent()
     }
 
-    // Effect to sync play/pause when parent state changes
     LaunchedEffect(isPlaying, isReady) {
         if (isReady && webViewRef != null) {
             val js = if (isPlaying) "playVideo();" else "pauseVideo();"
@@ -223,26 +253,55 @@ fun YouTubeSyncedPlayer(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.mediaPlaybackRequiresUserGesture = false
-                    settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        mediaPlaybackRequiresUserGesture = false
+                        allowFileAccess = true
+                        allowContentAccess = true
+                        userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+                        cacheMode = WebSettings.LOAD_DEFAULT
+                    }
                     webChromeClient = WebChromeClient()
-                    webViewClient = WebViewClient()
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            isReady = true
+                        }
+                    }
                     
                     addJavascriptInterface(object {
                         @JavascriptInterface
                         fun onPlayerReady() {
                             isReady = true
+                            hasError = false
                         }
 
                         @JavascriptInterface
                         fun onStateChange(playing: Boolean, timeMs: Long) {
                             onPlaybackChange?.invoke(playing, timeMs)
                         }
+
+                        @JavascriptInterface
+                        fun onDuration(durMs: Long) {
+                            onDurationChange?.invoke(durMs)
+                        }
+
+                        @JavascriptInterface
+                        fun onPlayerError(code: Int) {
+                            hasError = true
+                        }
                     }, "AndroidBridge")
 
-                    loadDataWithBaseURL("https://www.youtube.com", htmlContent, "text/html", "UTF-8", null)
+                    val headers = HashMap<String, String>()
+                    headers["Referer"] = "https://www.youtube.com/"
+                    headers["Origin"] = "https://www.youtube.com"
+
+                    if (hasError) {
+                        loadUrl(embedUrl, headers)
+                    } else {
+                        loadDataWithBaseURL("https://www.youtube.com", htmlContent, "text/html", "UTF-8", null)
+                    }
                     webViewRef = this
                 }
             },
@@ -251,11 +310,36 @@ fun YouTubeSyncedPlayer(
             }
         )
 
-        if (!isReady) {
+        if (!isReady && !hasError) {
             CircularProgressIndicator(
                 color = AHPrimaryPurple,
                 modifier = Modifier.size(36.dp)
             )
+        }
+
+        if (hasError) {
+            Surface(
+                modifier = Modifier.padding(16.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xEE0F172A)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("تم التبديل لمشغل يوتيوب المباشر لتجاوز التقييد", color = Color.White, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Button(
+                        onClick = {
+                            hasError = false
+                            webViewRef?.loadUrl(embedUrl)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AHPrimaryPurple)
+                    ) {
+                        Text("إعادة تشغيل الفيديو", fontSize = 11.sp)
+                    }
+                }
+            }
         }
     }
 }
@@ -266,7 +350,8 @@ fun ExoSyncedPlayer(
     videoUrl: String,
     isPlaying: Boolean,
     currentPositionMs: Long,
-    onPlaybackChange: ((isPlaying: Boolean, positionMs: Long) -> Unit)?
+    onPlaybackChange: ((isPlaying: Boolean, positionMs: Long) -> Unit)?,
+    onDurationChange: ((durationMs: Long) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var isBuffering by remember { mutableStateOf(true) }
@@ -289,6 +374,9 @@ fun ExoSyncedPlayer(
                         Player.STATE_READY -> {
                             isBuffering = false
                             errorMessage = null
+                            if (duration > 0) {
+                                onDurationChange?.invoke(duration)
+                            }
                         }
                         Player.STATE_ENDED -> isBuffering = false
                         Player.STATE_IDLE -> Unit
