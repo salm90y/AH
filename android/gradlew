@@ -1,21 +1,25 @@
-#!/bin/sh
+#!/bin/bash
 
-#
-# Copyright © 2015-2021 the original authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-#
-# Gradle start up script for POSIX
-#
+# Find gradle command location
+GRADLE_BIN=""
 
-# Set default values for variables
-APP_BASE_NAME=`basename "$0"`
-APP_HOME="`pwd -P`"
-
-# Use standard gradle wrapper or fallback to gradle command
 if command -v gradle >/dev/null 2>&1; then
-    exec gradle "$@"
+    GRADLE_BIN="gradle"
+elif [ -n "$GRADLE_HOME" ] && [ -x "$GRADLE_HOME/bin/gradle" ]; then
+    GRADLE_BIN="$GRADLE_HOME/bin/gradle"
+elif [ -x "/opt/hostedtoolcache/gradle/8.5/x64/bin/gradle" ]; then
+    GRADLE_BIN="/opt/hostedtoolcache/gradle/8.5/x64/bin/gradle"
+else
+    FOUND_PATH=$(which gradle 2>/dev/null || find /opt /usr /root ~/.gradle -name gradle -type f 2>/dev/null | head -n 1)
+    if [ -n "$FOUND_PATH" ]; then
+        GRADLE_BIN="$FOUND_PATH"
+    fi
+fi
+
+if [ -n "$GRADLE_BIN" ]; then
+    exec "$GRADLE_BIN" "$@"
 else
     echo "Gradle wrapper: Running gradle command"
     gradle "$@"
 fi
+
