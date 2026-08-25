@@ -1,8 +1,7 @@
 <resources>
-    <style name="Theme.MovieRoom" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#6366f1</item>
-        <item name="colorPrimaryDark">#4f46e5</item>
-        <item name="colorAccent">#818cf8</item>
-        <item name="android:windowBackground">#020617</item>
+    <style name="Theme.MovieRoom" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#070B14</item>
+        <item name="android:navigationBarColor">#070B14</item>
+        <item name="android:windowBackground">#070B14</item>
     </style>
 </resources>
