@@ -115,10 +115,13 @@ export default function JoinRoom({
   const fetchServerRooms = useCallback(async () => {
     setIsLoadingRooms(true);
     try {
-      const url = `/api/rooms?userId=${currentUser?.id || ''}&username=${currentUser?.username || ''}`;
+      const url = `/api/rooms?userId=${encodeURIComponent(currentUser?.id || '')}&username=${encodeURIComponent(currentUser?.username || '')}`;
       const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Status ${res.status}`);
+      }
       const data = await res.json();
-      if (data.success && Array.isArray(data.rooms)) {
+      if (data && data.success && Array.isArray(data.rooms)) {
         setPublicRooms(data.rooms.filter((r: any) => r.isPublic !== false));
         if (currentUser) {
           const mine = data.rooms.filter((r: any) => 
@@ -130,7 +133,8 @@ export default function JoinRoom({
         }
       }
     } catch (e) {
-      console.error("Failed to load server rooms:", e);
+      // Soft fallback without throwing or interrupting UI
+      console.warn("Could not load server rooms, maintaining current state:", e);
     } finally {
       setIsLoadingRooms(false);
     }

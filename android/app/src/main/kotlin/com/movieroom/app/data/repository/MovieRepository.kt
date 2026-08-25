@@ -86,6 +86,10 @@ class MovieRepository {
     private val _moviesState = MutableStateFlow(initialMovies)
     val moviesFlow: Flow<List<Movie>> = _moviesState.asStateFlow()
 
+    fun getMovies(): List<Movie> {
+        return _moviesState.value
+    }
+
     private val initialRooms = mutableListOf(
         WatchRoom(
             id = "room-vip-1",

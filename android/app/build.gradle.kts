@@ -29,8 +29,13 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/kotlin", "src/main/java")
         }
     }
     compileOptions {
