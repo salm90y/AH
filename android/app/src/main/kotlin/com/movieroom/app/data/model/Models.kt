@@ -9,9 +9,13 @@ data class Movie(
     @SerializedName("posterUrl") val posterUrl: String,
     @SerializedName("videoUrl") val videoUrl: String,
     @SerializedName("rating") val rating: Double = 4.8,
-    @SerializedName("duration") val duration: String = "120 min",
+    @SerializedName("duration") val duration: String = "120 دقيقة",
     @SerializedName("description") val description: String = "",
-    @SerializedName("isFeatured") val isFeatured: Boolean = false
+    @SerializedName("isFeatured") val isFeatured: Boolean = false,
+    @SerializedName("releaseYear") val releaseYear: Int = 2024,
+    @SerializedName("director") val director: String = "مخرج سينمائي",
+    @SerializedName("actors") val actors: List<String> = emptyList(),
+    @SerializedName("isFavorite") var isFavorite: Boolean = false
 )
 
 data class WatchRoom(
@@ -21,7 +25,9 @@ data class WatchRoom(
     @SerializedName("currentMovie") val currentMovie: Movie?,
     @SerializedName("viewerCount") val viewerCount: Int = 1,
     @SerializedName("isPrivate") val isPrivate: Boolean = false,
-    @SerializedName("passcode") val passcode: String? = null
+    @SerializedName("passcode") val passcode: String? = null,
+    @SerializedName("isPlaying") val isPlaying: Boolean = true,
+    @SerializedName("currentPositionMs") val currentPositionMs: Long = 0L
 )
 
 data class ChatMessage(
@@ -32,9 +38,17 @@ data class ChatMessage(
     @SerializedName("isSystem") val isSystem: Boolean = false
 )
 
-data class User(
+data class UserProfile(
     @SerializedName("id") val id: String,
     @SerializedName("username") val username: String,
     @SerializedName("email") val email: String,
-    @SerializedName("isAdmin") val isAdmin: Boolean = false
+    @SerializedName("avatarUrl") val avatarUrl: String = "",
+    @SerializedName("joinedDate") val joinedDate: String = "2024",
+    @SerializedName("favoriteCount") val favoriteCount: Int = 0
+)
+
+data class Category(
+    val id: String,
+    val name: String,
+    val iconName: String = "movie"
 )

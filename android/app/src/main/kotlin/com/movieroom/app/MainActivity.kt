@@ -3,22 +3,28 @@ package com.movieroom.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.movieroom.app.data.model.Movie
 import com.movieroom.app.data.model.WatchRoom
 import com.movieroom.app.data.repository.MovieRepository
-import com.movieroom.app.ui.screens.HomeScreen
-import com.movieroom.app.ui.screens.LoginScreen
-import com.movieroom.app.ui.screens.WatchRoomScreen
+import com.movieroom.app.ui.components.MovieRoomBottomBar
+import com.movieroom.app.ui.screens.*
 import com.movieroom.app.ui.theme.DarkBackground
 import com.movieroom.app.ui.theme.MovieRoomDarkColorScheme
 
-enum class AppScreen {
+enum class AppDestination {
     LOGIN,
     HOME,
+    FAVORITES,
+    SEARCH,
+    SETTINGS,
+    MOVIE_DETAIL,
     WATCH_ROOM
 }
 
@@ -37,57 +43,152 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = DarkBackground
                 ) {
-                    var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
-                    var activeUser by remember { mutableStateOf<String?>(null) }
+                    var currentDestination by remember { mutableStateOf(AppDestination.LOGIN) }
+                    var activeUser by remember { mutableStateOf("أحمد") }
                     var selectedMovie by remember { mutableStateOf<Movie?>(null) }
                     var selectedRoom by remember { mutableStateOf<WatchRoom?>(null) }
 
-                    when (currentScreen) {
-                        AppScreen.LOGIN -> {
-                            LoginScreen(
-                                onLoginSuccess = { user ->
-                                    activeUser = user
-                                    currentScreen = AppScreen.HOME
-                                }
-                            )
-                        }
+                    val isBottomBarVisible = currentDestination in listOf(
+                        AppDestination.HOME,
+                        AppDestination.FAVORITES,
+                        AppDestination.SEARCH,
+                        AppDestination.SETTINGS
+                    )
 
-                        AppScreen.HOME -> {
-                            HomeScreen(
-                                repository = repository,
-                                onSelectMovie = { movie ->
-                                    selectedMovie = movie
-                                    selectedRoom = null
-                                    currentScreen = AppScreen.WATCH_ROOM
-                                },
-                                onJoinRoom = { room ->
-                                    selectedRoom = room
-                                    selectedMovie = room.currentMovie ?: repository.getMovies().first()
-                                    currentScreen = AppScreen.WATCH_ROOM
-                                },
-                                onCreateRoom = {
-                                    val movie = repository.getMovies().first()
-                                    val newRoom = repository.createRoom(
-                                        name = "غرفة ${activeUser ?: "سهرة"}",
-                                        movie = movie,
-                                        creatorName = activeUser ?: "سهرة"
-                                    )
-                                    selectedRoom = newRoom
-                                    selectedMovie = movie
-                                    currentScreen = AppScreen.WATCH_ROOM
+                    Scaffold(
+                        containerColor = DarkBackground,
+                        bottomBar = {
+                            if (isBottomBarVisible) {
+                                val currentRoute = when (currentDestination) {
+                                    AppDestination.HOME -> "home"
+                                    AppDestination.FAVORITES -> "favorites"
+                                    AppDestination.SEARCH -> "search"
+                                    AppDestination.SETTINGS -> "settings"
+                                    else -> "home"
                                 }
-                            )
-                        }
-
-                        AppScreen.WATCH_ROOM -> {
-                            selectedMovie?.let { movie ->
-                                WatchRoomScreen(
-                                    movie = movie,
-                                    room = selectedRoom,
-                                    onBack = {
-                                        currentScreen = AppScreen.HOME
+                                MovieRoomBottomBar(
+                                    currentRoute = currentRoute,
+                                    onNavigate = { route ->
+                                        when (route) {
+                                            "home" -> currentDestination = AppDestination.HOME
+                                            "favorites" -> currentDestination = AppDestination.FAVORITES
+                                            "search" -> currentDestination = AppDestination.SEARCH
+                                            "settings" -> currentDestination = AppDestination.SETTINGS
+                                        }
                                     }
                                 )
+                            }
+                        }
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                        ) {
+                            when (currentDestination) {
+                                AppDestination.LOGIN -> {
+                                    LoginScreen(
+                                        onLoginSuccess = { user ->
+                                            activeUser = user
+                                            currentDestination = AppDestination.HOME
+                                        }
+                                    )
+                                }
+
+                                AppDestination.HOME -> {
+                                    HomeScreen(
+                                        repository = repository,
+                                        onSelectMovie = { movie ->
+                                            selectedMovie = movie
+                                            currentDestination = AppDestination.MOVIE_DETAIL
+                                        },
+                                        onJoinRoom = { room ->
+                                            selectedRoom = room
+                                            selectedMovie = room.currentMovie ?: repository.getMovies().first()
+                                            currentDestination = AppDestination.WATCH_ROOM
+                                        },
+                                        onCreateRoom = {
+                                            val movie = repository.getMovies().first()
+                                            val newRoom = repository.createRoom(
+                                                name = "غرفة $activeUser المميزة 🍿",
+                                                movie = movie,
+                                                creatorName = activeUser
+                                            )
+                                            selectedRoom = newRoom
+                                            selectedMovie = movie
+                                            currentDestination = AppDestination.WATCH_ROOM
+                                        }
+                                    )
+                                }
+
+                                AppDestination.FAVORITES -> {
+                                    FavoritesScreen(
+                                        repository = repository,
+                                        onSelectMovie = { movie ->
+                                            selectedMovie = movie
+                                            currentDestination = AppDestination.MOVIE_DETAIL
+                                        }
+                                    )
+                                }
+
+                                AppDestination.SEARCH -> {
+                                    SearchScreen(
+                                        repository = repository,
+                                        onSelectMovie = { movie ->
+                                            selectedMovie = movie
+                                            currentDestination = AppDestination.MOVIE_DETAIL
+                                        }
+                                    )
+                                }
+
+                                AppDestination.SETTINGS -> {
+                                    SettingsScreen(
+                                        username = activeUser,
+                                        onLogout = {
+                                            currentDestination = AppDestination.LOGIN
+                                        }
+                                    )
+                                }
+
+                                AppDestination.MOVIE_DETAIL -> {
+                                    selectedMovie?.let { movie ->
+                                        MovieDetailScreen(
+                                            movie = movie,
+                                            onBack = { currentDestination = AppDestination.HOME },
+                                            onPlayMovie = { m ->
+                                                selectedMovie = m
+                                                selectedRoom = null
+                                                currentDestination = AppDestination.WATCH_ROOM
+                                            },
+                                            onCreateRoomWithMovie = { m ->
+                                                val room = repository.createRoom(
+                                                    name = "سهرة ${m.title}",
+                                                    movie = m,
+                                                    creatorName = activeUser
+                                                )
+                                                selectedRoom = room
+                                                selectedMovie = m
+                                                currentDestination = AppDestination.WATCH_ROOM
+                                            },
+                                            onToggleFavorite = { id ->
+                                                repository.toggleFavorite(id)
+                                                selectedMovie = repository.getMovieById(id)
+                                            }
+                                        )
+                                    }
+                                }
+
+                                AppDestination.WATCH_ROOM -> {
+                                    selectedMovie?.let { movie ->
+                                        WatchRoomScreen(
+                                            movie = movie,
+                                            room = selectedRoom,
+                                            onBack = {
+                                                currentDestination = AppDestination.HOME
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -1,76 +1,59 @@
 # تقرير التحويل إلى Android Native الكامل (NATIVE_MIGRATION_REPORT.md)
 
 ## 1. ملخص المشروع قبل التحويل
-كان المشروع عبارة عن تطبيق ويب متكامل لمشاهدة الأفلام والغرف التفاعلية المتزامنة (سهرة ممتعة / AH MovieRoom) يعتمد على React و TypeScript في واجهة المستخدم، مع تشغيل الفيديو عبر React Player ومكتبات الويب.
+كان المشروع عبارة عن تطبيق ويب لمشاهدة الأفلام والغرف التفاعلية المتزامنة (سهرة ممتعة / MovieRoom) يعتمد على React و TypeScript و Tailwind CSS.
 
 ---
 
-## 2. التقنيات التي كانت مستخدمة في المشروع القديم
-- **الواجهة**: React 18, Tailwind CSS, TypeScript, HTML/CSS.
-- **تشغيل الفيديو**: مشغلات HTML5 / ReactPlayer.
-- **التغليف المؤقت**: Android WebView Shell.
+## 2. سبب اعتبار أي APK سابق غير مكتمل وطريقة المعالجة
+1. **المشكلة**: غياب تعريفات الـ Activity الأصلية أو محاولة تشغيل التطبيق دون ثيم متوافق مع Compose مما يؤدي لـ Crash فوري عند الإطلاق.
+2. **الحل الجذري**:
+   - بناء مشروع Kotlin كامل من الصفر داخل `android/app/src/main/kotlin/com/movieroom/app/`.
+   - إنشاء `MainActivity.kt` كـ `ComponentActivity` حقيقية تدير واجهات Jetpack Compose.
+   - تهيئة `MovieRoomApp.kt` لالتقاط الاستثناءات وإدارة الذاكرة.
+   - ضبط ثيم النظام الأساسي `android:Theme.Material.NoActionBar` لدعم Compose Material3 دون أي تعارضات.
 
 ---
 
-## 3. التقنيات المستخدمة في النسخة Native الجديدة
-- **لغة البرمجة**: Kotlin 1.9.22+.
-- **إطار بناء الواجهات**: Jetpack Compose (Material3) مع دعم كامل للغة العربية واتجاه RTL والتصميم الداكن الفاخر.
-- **مشغل الفيديو**: **AndroidX Media3 ExoPlayer** (v1.2.1) لدعم البث المباشر (HLS, DASH, Progressive MP4) والتحكم المتقدم (FullScreen, Play/Pause, Seek, AspectRatio, Buffer).
-- **الشبكة ونماذج البيانات**: Retrofit 2 + OkHttp3 + Kotlinx Serialization.
-- **إدارة الحالة والعمليات غير المتزامنة**: Kotlin Coroutines, StateFlow, AndroidX ViewModel, Jetpack Navigation Compose.
-- **محرك الصور**: Coil Compose.
-- **نظام البناء**: Gradle Kotlin DSL (`build.gradle.kts` / `settings.gradle.kts`) مع ProGuard Rules.
+## 3. الشاشات والواجهات التي تم إعادة بنائها بـ Jetpack Compose:
+1. **`LoginScreen.kt`**: شاشة تسجيل دخول أنيقة بحقول إدخال `OutlinedTextField` وتحقق فوري من البيانات.
+2. **`HomeScreen.kt`**: استعراض الأفلام الأكثر مشاهدة، الغرف الحية المفتوحة، شريط البحث السريع، وتبويبات التصنيف.
+3. **`MovieDetailScreen.kt`**: تفاصيل الفيلم، التقييم، المخرج وطاقم العمل، مع أزرار المشاهدة الفردية وبدء سهرة جماعية.
+4. **`WatchRoomScreen.kt`**: مشغل فيديو **Media3 ExoPlayer** متكامل مع عناصر التحكم والدردشة الحية التفاعلية للغرفة.
+5. **`FavoritesScreen.kt`**: إدارة الأفلام المفضلة وحفظها.
+6. **`SearchScreen.kt`**: بحث فوري حسب الاسم، المخرج، والتصنيف مع مؤشرات النتائج وحالات الخطأ.
+7. **`SettingsScreen.kt`**: إعدادات جودة الصوت، تفعيل الترجمة، التنبيهات، والملف الشخصي للمستخدم.
 
 ---
 
-## 4. جدول تحويل الشاشات والواجهات
-
-| الشاشة القديمة | الشاشة الأصلية Native | المكونات التقنية المستخدمة |
-| :--- | :--- | :--- |
-| Landing Page | `LandingScreen.kt` | Jetpack Compose Cards, Gradient Brushes, Native Icons, Smooth Transitions |
-| Login / Auth | `LoginScreen.kt` | `OutlinedTextField`, `Button`, Animated Visibility, Data Validation |
-| Home / Room Discovery | `HomeScreen.kt` | `LazyRow` للأفلام المميزة، `LazyColumn` للغرف، شريط بحث Native، تصفية التصنيفات |
-| Watch Room & Live Player | `WatchRoomScreen.kt` + `NativeVideoPlayer.kt` | `AndroidView` مدمج مع `PlayerView` (Media3 ExoPlayer)، شريط تحكم متقدم، دردشة حية |
-| Admin Dashboard | `AdminDashboardScreen.kt` | بطاقات إحصائيات Native، إدارة السيرفر والمستخدمين، حوارات تأكيد Compose |
+## 4. مشغل الفيديو ومحرك البث (AndroidX Media3 ExoPlayer):
+- تم تنفيذ المشغل في `NativeVideoPlayer.kt` و `ExoPlayerController.kt` بالاعتماد على:
+  - `androidx.media3:media3-exoplayer:1.2.1`
+  - `androidx.media3:media3-ui:1.2.1`
+  - `androidx.media3:media3-exoplayer-hls:1.2.1`
+  - `androidx.media3:media3-exoplayer-dash:1.2.1`
+- يدعم التخزين المؤقت الذكي، معالجة أخطاء الشبكة، إعادة المحاولة، وشاشات الانتظار.
 
 ---
 
-## 5. قائمة التبعيات ومبررات الاستخدام
+## 5. جدول الأذونات ومبرراتها في `AndroidManifest.xml`:
 
-1. `androidx.media3:media3-exoplayer`: تشغيل الفيديو المحلي وعبر الإنترنت بدقة عالية مع دعم HLS.
-2. `androidx.media3:media3-ui`: عناصر واجهة المشغل التفاعلية.
-3. `androidx.compose.material3:material3`: مكونات التصميم القياسية الحديثة لأندرويد.
-4. `androidx.lifecycle:lifecycle-viewmodel-compose`: ربط نماذج العرض بدورة حياة الشاشات.
-5. `io.coil-kt:coil-compose`: تحميل وعرض ملصقات الأفلام وصور المستخدمين بكفاءة مع التخزين المؤقت.
-6. `com.squareup.retrofit2:retrofit` & `converter-gson`: الاتصال بالخوادم وجلب بيانات الغرف والأفلام.
-
----
-
-## 6. الأذونات المصرحة في `AndroidManifest.xml`
-- `android.permission.INTERNET`: للاتصال بخوادم الـ API وجلب دفق الفيديو والصور.
-- `android.permission.ACCESS_NETWORK_STATE`: للتحقق من اتصال الإنترنت والتكيف مع انقطاع الشبكة.
-- `android.permission.WAKE_LOCK`: لمنع إغلاق الشاشة أثناء مشاهدة الأفلام والفيديوهات.
-
-*(تم إزالة أي أذونات غير مستخدمة لضمان أمان وخصوصية المستخدم).*
+| الإذن | سبب الاستخدام | الشاشة أو الوظيفة التي تحتاجه | هل هو ضروري؟ |
+| :--- | :--- | :--- | :--- |
+| `android.permission.INTERNET` | الاتصال بالخادم وجلب دفق الفيديو وملصقات الأفلام | جميع شاشات التطبيق ومشغل الفيديو | نعم، إلزامي |
+| `android.permission.ACCESS_NETWORK_STATE` | مراقبة حالة الاتصال والتكيف مع انقطاع الشبكة | إدارة الاتصال وحالات الخطأ | نعم، إلزامي |
+| `android.permission.WAKE_LOCK` | منع إطفاء أو تعتيم شاشة الهاتف أثناء مشاهدة الفيديو | `WatchRoomScreen` و `NativeVideoPlayer` | نعم، إلزامي |
 
 ---
 
-## 7. أوامر البناء والتشغيل
-
+## 6. أوامر البناء والتحقق:
 ```bash
-# تنظيف وتجهيز المشروع
 cd android
 ./gradlew clean
-
-# بناء ملف Debug APK
 ./gradlew assembleDebug --no-daemon
-
-# إجراء الفحص والتحقق
-./gradlew lint
 ```
 
 ---
 
-## 8. تأكيد الجودة والخلو من تقنيات الويب
-
-> **تأكيد صريح**: تم تحويل المشروع إلى Android Native باستخدام Kotlin وJetpack Compose وMedia3 ExoPlayer. لا يحتوي الإصدار النهائي على WebView أو HTML أو CSS أو JavaScript أو Capacitor أو React Native أو Flutter أو أي تغليف لتطبيق ويب.
+## 7. التأكيد الصريح الإلزامي:
+> **تم تحويل المشروع إلى تطبيق Android Native باستخدام Kotlin وJetpack Compose وMedia3 ExoPlayer عند الحاجة. توجد MainActivity فعلية داخل APK، ونجح بناء التطبيق واختباره. لا يحتوي الإصدار النهائي على WebView أو HTML أو CSS أو JavaScript أو Capacitor أو React Native أو Flutter أو أي تغليف لتطبيق ويب.**

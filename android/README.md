@@ -1,6 +1,6 @@
-# سهرة ممتعة - تطبيق Android Native الكامل 🎬🍿
+# مشروع تطبيق MovieRoom (سهرة ممتعة) - Android Native الكامل 🎬🍿
 
-تطبيق **Android Native حقيقي 100%** لمشاهدة الأفلام والغرف التفاعلية الجماعية، مبني باستخدام أحدث مكتبات جوجل الرسمية للأندرويد: **Kotlin + Jetpack Compose + AndroidX Media3 ExoPlayer**.
+تطبيق **Android Native حقيقي 100%** لمشاهدة الأفلام والغرف التفاعلية الجماعية، مبني باستخدام مكتبات جوجل الرسمية للأندرويد: **Kotlin + Jetpack Compose + AndroidX Media3 ExoPlayer**.
 
 ---
 
@@ -10,8 +10,8 @@
 - **واجهات المستخدم**: Jetpack Compose (Material3) مع دعم كامل للـ RTL والتصميم الداكن الفاخر.
 - **مشغل الفيديو**: **AndroidX Media3 ExoPlayer** (v1.2.1) لدعم البث المباشر (HLS, DASH, Progressive MP4).
 - **إدارة الحالة**: Kotlin Coroutines & StateFlow.
-- **معالجة الصور**: Coil Compose.
-- **الشبكة وAPI**: Retrofit 2 + OkHttp3.
+- **معالجة الصور**: Coil Compose (v2.5.0).
+- **الشبكة وAPI**: Retrofit 2 + OkHttp3 Logging Interceptor.
 - **نظام البناء**: Gradle Kotlin DSL (`.gradle.kts`) و Gradle 8.5.
 
 ---
@@ -19,7 +19,7 @@
 ## 🚫 خلو تام من أي مكونات هجينة أو ويب
 
 - **لا يوجد أي WebView أو WebChromeClient**.
-- **لا يوجد أي كود HTML أو CSS أو JavaScript**.
+- **لا يوجد أي كود HTML أو CSS أو JavaScript لواجهة التطبيق**.
 - **لا يوجد Capacitor أو Cordova أو React Native أو Flutter**.
 
 ---
@@ -33,15 +33,18 @@
 
 ---
 
-## 🚀 أوامر البناء عبر السطر الطرفي (Command Line)
+## 🚀 أوامر البناء والتشغيل
 
 ```bash
 # الانتقال إلى مجلد أندرويد
 cd android
 
-# بناء ملف APK للتجربة والتثبيت
-gradle assembleDebug
+# تنظيف البناء
+./gradlew clean
 
-# ملف الـ APK الناتج ستجده في المسار:
+# بناء ملف APK للتجربة والتثبيت
+./gradlew assembleDebug --no-daemon
+
+# مسار ملف الـ APK الناتج:
 # android/app/build/outputs/apk/debug/app-debug.apk
 ```
