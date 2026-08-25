@@ -25,18 +25,14 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
+
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
 
       - name: Build Debug APK
         run: |
           cd android
-          chmod +x gradlew
-          if command -v gradle >/dev/null 2>&1; then
-            gradle assembleDebug --no-daemon --stacktrace
-          else
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          fi
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
