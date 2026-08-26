@@ -59,7 +59,7 @@ fun SyncedVideoPlayer(
 }
 
 fun extractYouTubeId(url: String): String? {
-    val pattern = "(?<=watch\\?v=|/videos/|embed/|youtu.be/|/v/|/e/|watch\\?v%3D|watch\\?feature=player_embedded&v=|%2Fvideos%2F|embed%\u200C\u200B2F|youtu.be%2F|%2Fv%2F)[^#&?\\n]*"
+    val pattern = "(?<=watch\\?v=|/videos/|embed/|youtu.be/|/v/|/e/|watch\\?v%3D|watch\\?feature=player_embedded&v=|%2Fvideos%2F|youtu.be%2F|%2Fv%2F)[^#&?\\n]*"
     val compiledPattern = Pattern.compile(pattern)
     val matcher = compiledPattern.matcher(url)
     return if (matcher.find()) matcher.group() else null
@@ -76,16 +76,19 @@ fun YoutubeSyncedPlayer(
     val lifecycleOwner = LocalLifecycleOwner.current
     var ytPlayer by remember { mutableStateOf<YouTubePlayer?>(null) }
     var isReady by remember { mutableStateOf(false) }
+    var localCurrentSecond by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(isPlaying, currentPositionMs, isReady) {
         if (isReady && ytPlayer != null) {
             val positionSecs = currentPositionMs / 1000f
-            if (isPlaying) {
+            // Only seek if external position is far from local position (> 2 seconds)
+            if (kotlin.math.abs(localCurrentSecond - positionSecs) > 2f) {
                 ytPlayer?.seekTo(positionSecs)
+            }
+            if (isPlaying) {
                 ytPlayer?.play()
             } else {
                 ytPlayer?.pause()
-                ytPlayer?.seekTo(positionSecs)
             }
         }
     }
@@ -108,10 +111,14 @@ fun YoutubeSyncedPlayer(
                             if (!isPlaying) youTubePlayer.pause()
                         }
 
+                        override fun onCurrentSecond(youTubePlayer: YouTubePlayer, second: Float) {
+                            localCurrentSecond = second
+                        }
+
                         override fun onStateChange(youTubePlayer: YouTubePlayer, state: com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants.PlayerState) {
                             when (state) {
-                                com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants.PlayerState.PLAYING -> onPlaybackChange?.invoke(true, currentPositionMs)
-                                com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants.PlayerState.PAUSED -> onPlaybackChange?.invoke(false, currentPositionMs)
+                                com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants.PlayerState.PLAYING -> onPlaybackChange?.invoke(true, (localCurrentSecond * 1000).toLong())
+                                com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants.PlayerState.PAUSED -> onPlaybackChange?.invoke(false, (localCurrentSecond * 1000).toLong())
                                 else -> Unit
                             }
                         }
@@ -126,7 +133,6 @@ fun YoutubeSyncedPlayer(
                         .controls(1)
                         .rel(0)
                         .build()
-
                     initialize(listener, options)
                 }
             },
