@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -184,25 +183,19 @@ fun WatchRoomScreen(
             TabRow(
                 selectedTabIndex = activeTab,
                 containerColor = Color(0xFF0F172A),
-                contentColor = Color.White,
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
-                        Modifier.tabIndicatorOffset(tabPositions[activeTab]),
-                        color = Color(0xFF3B82F6)
-                    )
-                }
+                contentColor = Color(0xFF3B82F6)
             ) {
                 Tab(
                     selected = activeTab == 0,
                     onClick = { activeTab = 0 },
-                    text = { Text("الدردشة") },
-                    icon = { Icon(Icons.Default.Chat, contentDescription = null) }
+                    text = { Text("الدردشة", color = if (activeTab == 0) Color.White else Color.Gray) },
+                    icon = { Icon(Icons.Default.Chat, contentDescription = null, tint = if (activeTab == 0) Color(0xFF3B82F6) else Color.Gray) }
                 )
                 Tab(
                     selected = activeTab == 1,
                     onClick = { activeTab = 1 },
-                    text = { Text("الاتصال") },
-                    icon = { Icon(Icons.Default.Call, contentDescription = null) }
+                    text = { Text("الاتصال", color = if (activeTab == 1) Color.White else Color.Gray) },
+                    icon = { Icon(Icons.Default.Call, contentDescription = null, tint = if (activeTab == 1) Color(0xFF3B82F6) else Color.Gray) }
                 )
             }
 

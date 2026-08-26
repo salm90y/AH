@@ -76,7 +76,14 @@ fun YoutubeSyncedPlayer(
     val lifecycleOwner = LocalLifecycleOwner.current
     var ytPlayer by remember { mutableStateOf<YouTubePlayer?>(null) }
     var isReady by remember { mutableStateOf(false) }
-    var localCurrentSecond by remember { mutableFloatStateOf(0f) }
+    var localCurrentSecond by remember { mutableStateOf(0f) }
+    var youTubePlayerViewRef by remember { mutableStateOf<YouTubePlayerView?>(null) }
+
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            youTubePlayerViewRef?.release()
+        }
+    }
 
     LaunchedEffect(isPlaying, currentPositionMs, isReady) {
         if (isReady && ytPlayer != null) {
@@ -101,6 +108,7 @@ fun YoutubeSyncedPlayer(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 YouTubePlayerView(ctx).apply {
+                    youTubePlayerViewRef = this
                     lifecycleOwner.lifecycle.addObserver(this)
                     
                     val listener = object : AbstractYouTubePlayerListener() {
@@ -135,9 +143,6 @@ fun YoutubeSyncedPlayer(
                         .build()
                     initialize(listener, options)
                 }
-            },
-            onRelease = { view ->
-                view.release()
             }
         )
     }

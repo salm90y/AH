@@ -84,7 +84,6 @@ dependencies {
     implementation("androidx.media3:media3-common:$media3Version")
 
     // YouTube Player
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:chromecast-sender:12.1.0")
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
 
     // Image loading
